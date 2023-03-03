@@ -1,0 +1,86 @@
+version: "3.8"
+services:
+  # kafdrop: http://localhost:9000
+
+  #region zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper
+    hostname: zookeeper
+    container_name: zookeeper
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_JMX_PORT: 39999
+    healthcheck:
+      test: echo srvr | nc zookeeper 2181 || exit 1
+      interval: 5s
+      retries: 5
+      start_period: 5s
+  #endregion
+
+  #region kafka
+  kafka:
+    image: confluentinc/cp-kafka
+    hostname: kafka
+    container_name: kafka
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./docker/kafka/bin:/home/appuser/bin:ro
+    healthcheck:
+      test: nc -z localhost 9092 || exit 1
+      interval: 5s
+      retries: 5
+      start_period: 5s
+    ports:
+      - "127.0.0.1:9092:9092"
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      # https://docs.confluent.io/platform/current/installation/configuration/broker-configs.html
+      KAFKA_BROKER_ID: 1
+      KAFKA_BROKER_RACK: "r1"
+
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: DOCKER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      KAFKA_ADVERTISED_LISTENERS: DOCKER://kafka:29092,EXTERNAL://kafka:9092
+      # please add kafka to your /etc/hosts file (127.0.0.1) so that tools outside docker can find it
+
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 5
+
+      KAFKA_JMX_PORT: 9991
+      KAFKA_JMX_HOSTNAME: kafka
+  #endregion
+
+  #region kafdrop
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    container_name: kafdrop
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKERCONNECT: kafka:29092
+      JVM_OPTS: "-Xms48M -Xmx96M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+    healthcheck:
+      test: curl --fail --silent http://localhost:9000 --output /dev/null || exit 1
+      interval: 5s
+      retries: 20
+      start_period: 10s
+  #endregion

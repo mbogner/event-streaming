@@ -1,0 +1,47 @@
+app:
+  kafka:
+    config:
+      auto-startup: true
+    topics:
+      sample:
+        name: sample_topic
+
+logging:
+  level:
+    root: INFO
+    dev.mbo: TRACE
+  pattern:
+    # pattern for including MDC
+    console: ${CONSOLE_LOG_PATTERN:%clr(%d{${LOG_DATEFORMAT_PATTERN:yyyy-MM-dd HH:mm:ss.SSS}}){faint} %clr(${LOG_LEVEL_PATTERN:%5p}) %clr([%15.15t]){faint} %clr(%F:%L){cyan} %clr(:){faint} %m %clr({){faint}%X%clr(}){faint}%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}}
+
+spring:
+  application:
+    name: event-streaming-app
+  jackson:
+    deserialization:
+      READ_ENUMS_USING_TO_STRING: true
+      FAIL_ON_UNKNOWN_PROPERTIES: false
+      FAIL_ON_INVALID_SUBTYPE: false
+    serialization:
+      INDENT_OUTPUT: false
+      ORDER_MAP_ENTRIES_BY_KEYS: true
+      WRITE_DATES_AS_TIMESTAMPS: false
+      WRITE_EMPTY_JSON_ARRAYS: false
+      WRITE_ENUMS_USING_TO_STRING: true
+      WRITE_NULL_MAP_VALUES: false
+      WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED: false
+      FAIL_ON_SELF_REFERENCES: true
+    default-property-inclusion: non_null
+    time-zone: UTC
+  main:
+    banner-mode: off
+  kafka:
+    bootstrap-servers: kafka:9092
+    listener:
+      type: batch
+      ack-mode: manual
+    consumer:
+      group-id: backend-c1
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: 5
